@@ -78,30 +78,24 @@ calSAS = function(calPars, objFun='NSE') {
   # Return ObjFun
   #------------------------------------------------------------------------------#
   results   = evalSAS(obs = data$Cout, sim = runMod$C_Q, npar=length(calPars))
-  objFunVal = eval(parse(text=paste0('results$', objFun)))
+  objFunVal = results[objFun][[1]]
   
   return(objFunVal)
 }
 
-# Using Optim
-# Likelihood
-calResults = optim(par=c(0.3, 0.3, 500),             # Initial values, Qbeta, ETalpha
+# Optimise the NSE
+calResults = optim(par=c(0.3, 0.3, 500), # Initial values, Qbeta, ETalpha
                    fn=calSAS,
                    method='L-BFGS-B',
-                   lower=c(0.01,0.01,500), upper=c(1,1,1500),
-                   control=list(trace=1),
-                   objFun='AIC')
+                   lower=c(0,0,50), upper=c(1,1,1500),
+                   control=list(fnscale=-1, trace=1),
+                   objFun='NSE')
 
-# NSE
-# calResults = optim(par=c(0.3, 0.3, 500),             # Initial values, Qbeta, ETalpha
-#                    fn=calSAS,
-#                    method='L-BFGS-B',
-#                    lower=c(0,0,50), upper=c(1,1,1500),
-#                    control=list(fnscale=-1, trace=1),
-#                    objFun='NSE')
+#------------------------------------------------------------------------------#
+# Results
+#------------------------------------------------------------------------------#
 
-
-# Get the results of the best calibration
+# Get the results of the best calibration and rerun the model
 Qpars  = list(alpha = 1.0, beta = calResults$par[1]) 
 ETpars = list(alpha = calResults$par[2], beta = 1.0) 
 S0   = calResults$par[3] 
@@ -111,8 +105,8 @@ pars = list(Q=Qpars, ET=ETpars, S0=S0, C_S0=C_S0, f_thresh=f_thresh,
 
 runMod = SAS_EFs(pars, data)
 
-# NSE score matches
-evalSAS(obs = data$Cout, sim = runMod$C_Q)
+# Matches ObjFun score
+evalSAS(obs = data$Cout, sim = runMod$C_Q, npar=3) # npars optimised
 
 # Plot
 data$C_Q = runMod$C_Q
