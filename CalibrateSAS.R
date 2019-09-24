@@ -67,31 +67,39 @@ calSAS = function(calPars, objFun='NSE') {
   
   # Initial conditions
   S0   = calPars[3] # Storage amount
-
+  
   # Combine parameters into a list
   pars = list(Q=Qpars, ET=ETpars, S0=S0, C_S0=C_S0, f_thresh=f_thresh,
               spinup=spinup, datesel=datesel)
-
+  
   # Run model
   runMod = SAS_EFs(pars, data)
   
-  # Return NSE
+  # Return ObjFun
   #------------------------------------------------------------------------------#
-  results = evalSAS(obs = data$Cout, sim = runMod$C_Q)
+  results   = evalSAS(obs = data$Cout, sim = runMod$C_Q, npar=length(calPars))
   objFunVal = eval(parse(text=paste0('results$', objFun)))
   
-  return(objFunVal*-1) # Negative 1 as optim minimises rather than maximises
+  return(objFunVal)
 }
 
-calResults = nlminb(start=c(0.3, 0.3, 500),             # Initial values, Qbeta, ETalpha
-                    objective=calSAS,
-                    lower=c(0,0,50), upper=c(1,1,1500))
-                    #control=list(eval.max=5, iter.max=5, trace=1))
+# Using Optim
+# Likelihood
+calResults = optim(par=c(0.3, 0.3, 500),             # Initial values, Qbeta, ETalpha
+                   fn=calSAS,
+                   method='L-BFGS-B',
+                   lower=c(0.01,0.01,500), upper=c(1,1,1500),
+                   control=list(trace=1),
+                   objFun='AIC')
 
--calResults$objective # Actual optimised NSE score
+# NSE
+# calResults = optim(par=c(0.3, 0.3, 500),             # Initial values, Qbeta, ETalpha
+#                    fn=calSAS,
+#                    method='L-BFGS-B',
+#                    lower=c(0,0,50), upper=c(1,1,1500),
+#                    control=list(fnscale=-1, trace=1),
+#                    objFun='NSE')
 
-# save.image('calSAS.Rdata')
-# load('calSAS.Rdata')
 
 # Get the results of the best calibration
 Qpars  = list(alpha = 1.0, beta = calResults$par[1]) 

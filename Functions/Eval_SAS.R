@@ -1,11 +1,13 @@
 # Evaluate SAS performance
 
-evalSAS = function(obs, sim) {
-  # Obs: observed
-  # Sim: simulated
+evalSAS = function(obs, sim, npar=0) {
+  # obs: observed
+  # sim: simulated
+  # npar: supply amount of pars optimised for AIC calculation
   # Returns: Nash-Sutcliffe Efficiency
   #          Kling-Gupta Efficiency
   #          Lin's concordance
+  #          AIC
   
   # Check for NA's in obs data
   if(sum(is.na(obs))>0) {
@@ -27,9 +29,21 @@ evalSAS = function(obs, sim) {
   sxy   = cov(sim, obs) * (n-1) / n # Covariance
   LCCC  = 2 * sxy / (sx2 + sy2 + (mean(sim)-mean(obs))^2)
   
-  # Out
-  out = list(NSE  = NSE,
-             KGE  = KGE,
-             LCCC = LCCC)
+  # AIC
+  if(npar>0) {
+    rmse = sqrt( mean( (obs-sim)^2 ) )
+    AIC  = length(obs)*log(rmse) + 2*npar 
+    
+    out = list(NSE  = NSE,
+               KGE  = KGE,
+               LCCC = LCCC,
+               AIC  = AIC)
+  } else {
+    # Out
+    out = list(NSE  = NSE,
+               KGE  = KGE,
+               LCCC = LCCC)
+  }
+  
   return(out)
 }
