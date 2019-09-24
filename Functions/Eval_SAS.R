@@ -29,21 +29,27 @@ evalSAS = function(obs, sim, npar=0) {
   sxy   = cov(sim, obs) * (n-1) / n # Covariance
   LCCC  = 2 * sxy / (sx2 + sy2 + (mean(sim)-mean(obs))^2)
   
+  # RMSE
+  RMSE = sqrt( mean( (obs-sim)^2 ) )
+  
   # AIC
   if(npar>0) {
-    rmse = sqrt( mean( (obs-sim)^2 ) )
-    AIC  = length(obs)*log(rmse) + 2*npar 
-    
+    AIC  = length(obs)*log(RMSE) + 2*npar
+
     out = list(NSE  = NSE,
                KGE  = KGE,
                LCCC = LCCC,
+               RMSE = RMSE,
                AIC  = AIC)
   } else {
     # Out
     out = list(NSE  = NSE,
                KGE  = KGE,
-               LCCC = LCCC)
+               LCCC = LCCC,
+               RMSE = RMSE)
   }
   
   return(out)
 }
+
+
