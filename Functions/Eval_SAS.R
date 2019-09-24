@@ -51,5 +51,3 @@ evalSAS = function(obs, sim, npar=0) {
   
   return(out)
 }
-
-

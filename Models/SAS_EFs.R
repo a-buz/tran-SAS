@@ -6,16 +6,24 @@
 
 SAS_EFs = function(pars, data) {
   # pars: list of parameters needed for the SAS_EFs
-  #       Q: alpha and beta
-  #       ET: alpha and beta
+  #       Q: SAS fun and parameters
+  #       ET: SAS fun and parameters
   #       S: S0 size of active storage
   #       f_thresh: threshold when to start sampling storage
   #       C_S0: initial concentration of tracer in storage
-  # !TODO, accept other functions than just Beta
+  
+  # Check what function is being used
+  if(pars$Q$fun=='fSAS_pl')    QSASfun = fSAS_pl
+  if(pars$Q$fun=='fSAS_pltv')  QSASfun = fSAS_pltv
+  if(pars$Q$fun=='fSAS_beta')  QSASfun = fSAS_beta
+  if(pars$ET$fun=='fSAS_pl')   ETSASfun = fSAS_pl
+  if(pars$ET$fun=='fSAS_pltv') ETSASfun = fSAS_pltv
+  if(pars$ET$fun=='fSAS_beta') ETSASfun = fSAS_beta
   
   # Shape parameters
-  parQ  = pars$Q
-  parET = pars$ET
+  parQ  = pars$Q$pars
+  parET = pars$ET$pars
+  # Initial storage
   S0    = pars$S0
   
   # Check if there needs to be a spinup
@@ -36,7 +44,7 @@ SAS_EFs = function(pars, data) {
   S_T  = rep(0, NN) # Storage
   C_ST = rep(0, NN) # Rank storage concentration 
   C_Q  = rep(0, NN) # Tracer concentration in stream
-  # !TODO: Following need to be implemented
+  
   C_ET = rep(0, NN) # ET concentration
   C_S  = rep(0, NN) # Mean storage concentration
   
@@ -57,8 +65,8 @@ SAS_EFs = function(pars, data) {
   f_thresh = pars$f_thresh
   
   # Initial SAS functions Omegas
-  Omega_Q  = fSAS_beta(S_T[1:length_s]/S_T[length_s], parQ)
-  Omega_ET = fSAS_beta(S_T[1:length_s]/S_T[length_s], parET)
+  Omega_Q  = QSASfun(S_T[1:length_s]/S_T[length_s],  parQ,  wi=data$wi[1])
+  Omega_ET = ETSASfun(S_T[1:length_s]/S_T[length_s], parET, wi=data$wi[1])
   
   # Loop
   for(i in 1:(NN-1)) {
@@ -71,8 +79,8 @@ SAS_EFs = function(pars, data) {
     # ----------------------------------
     # Evaluate SAS functions over domain
     # ----------------------------------
-    Omega_Q  = fSAS_beta(dom, pars$Q)
-    Omega_ET = fSAS_beta(dom, pars$ET)
+    Omega_Q  = QSASfun(dom,  parQ,   data$wi[i])
+    Omega_ET = ETSASfun(dom, parET,  data$wi[i])
     
     # ---------------------------------
     # Solve the master equation balance

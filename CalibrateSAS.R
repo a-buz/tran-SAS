@@ -4,8 +4,8 @@
 library(tidyverse)
 
 # Functions
-source('Functions/fSAS_beta.R')
 source('Models/SAS_EFs.R')
+source('Functions/SASfunctions.R')
 source('Functions/Eval_SAS.R')
 
 #------------------------------------------------------------------------------#
@@ -23,11 +23,12 @@ data = data %>%
   mutate(Date = as.Date(Date, tz='UTC')) %>% 
   group_by(Date) %>% 
   summarise(Cin = weighted.mean(Cin, P), # Conserve mass input of Cin
-            P = sum(P),
-            Q = sum(Q),
+            P  = sum(P),
+            Q  = sum(Q),
             ET = sum(ET),
+            wi = mean(wi),
             Cout = mean(Cout, na.rm=TRUE)) %>% 
-  select(Date, P, Q, ET, Cin, Cout)
+  select(Date, P, Q, ET, Cin, wi, Cout)
 
 # Fix tracer input for prettier plotting later on
 getCin = data$Cin[!is.na(data$Cin)][1] # First non NA value
@@ -61,9 +62,8 @@ datesel = c('2015-08-15')
 #------------------------------------------------------------------------------#
 calSAS = function(calPars, objFun='NSE') {
   # Parameters
-  # Set up Beta distribution parameters
-  Qpars  = list(alpha = 1.0, beta = calPars[1]) # Beta dist parameters for discharge
-  ETpars = list(alpha = calPars[2], beta = 1.0) # Beta dist parameters for ET
+  Qpars  = list(fun = 'fSAS_beta', pars = list(alpha = 1.0, beta = calPars[1]))
+  ETpars = list(fun = 'fSAS_beta', pars = list(alpha = calPars[2], beta = 1.0))
   
   # Initial conditions
   S0   = calPars[3] # Storage amount
@@ -84,10 +84,10 @@ calSAS = function(calPars, objFun='NSE') {
 }
 
 # Optimise the NSE
-calResults = optim(par=c(0.3, 0.3, 500), # Initial values, Qbeta, ETalpha
+calResults = optim(par=c(0.3, 0.3, 750), # Initial values, Qbeta, ETalpha, S0
                    fn=calSAS,
                    method='L-BFGS-B',
-                   lower=c(0,0,50), upper=c(1,1,1500),
+                   lower=c(0,0,500), upper=c(1,1,100),
                    control=list(fnscale=-1, trace=1),
                    objFun='NSE')
 

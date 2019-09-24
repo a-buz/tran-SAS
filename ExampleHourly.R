@@ -3,7 +3,6 @@
 #------------------------------------------------------------------------------#
 # R rewrite of tran-SAS package
 # Alexander Buzacott
-# Only the Beta dist has been implemented so far
 
 # Original MatLab version and citation:
 # Benettin, P., & Bertuzzo, E. (2018). tran-SAS v1.0: a numerical model 
@@ -24,8 +23,8 @@
 library(tidyverse) # To simplify aggregations and plotting. Base R is fine too
 
 # Functions
-source('Functions/fSAS_beta.R')
 source('Models/SAS_EFs.R')
+source('Functions/SASfunctions.R')
 source('Functions/Eval_SAS.R')
 
 #------------------------------------------------------------------------------#
@@ -33,7 +32,7 @@ source('Functions/Eval_SAS.R')
 #------------------------------------------------------------------------------#
 # Read in hourly test data that was generated from the original tran-SAS package
 data = read_csv('Example.csv') %>% 
-  filter(Date<as.Date('2013-09-30'))
+  filter(Date<as.Date('2013-09-30')) # Shorten dataset to reduce example runtime
 # Data has columns: Date, P, Q, ET, Cin, wi, Cout
 
 # Set missing data to NA
@@ -42,9 +41,18 @@ data$Cout = ifelse(data$Cout==-999, NA, data$Cout)
 #------------------------------------------------------------------------------#
 # Parameters
 #------------------------------------------------------------------------------#
-# Set up Beta distribution parameters
-Qpars  = list(alpha = 1.0, beta = 0.3) # Beta dist parameters for discharge
-ETpars = list(alpha = 0.3, beta = 1.0) # Beta dist parameters for ET
+# Select functions for Q and ET and assign parameters
+# Power law
+# Qpars  = list(fun = 'fSAS_pl', pars = list(k=0.7))
+# ETpars = list(fun = 'fSAS_pl', pars = list(k=0.7))
+
+# Power law with system wetness
+# Qpars  = list(fun = 'fSAS_pltv', pars = list(kmin=0.3, kmax=0.9))
+# ETpars = list(fun = 'fSAS_pl',   pars = list(k=1))
+
+# Beta distribution
+Qpars  = list(fun = 'fSAS_beta', pars = list(alpha=1.0, beta=0.3))
+ETpars = list(fun = 'fSAS_beta', pars = list(alpha=0.3, beta=1.0))
 
 # Initial conditions
 S0   = 1000 # Initial storage amount
@@ -56,10 +64,10 @@ f_thresh = 1 # Fraction of rank storage after which the storage is sampled unifo
 # Spinup
 spinup = list(spinStart = '2012-09-30',   # Start of spinup
               spinEnd   = '2013-09-29',   # End of spinup
-              spin_n    = 1)              # How many times to repeat, 0 equals no repeats
+              spin_n    = 3)              # How many times to repeat, 0 equals no repeats
 
-# Dates to sample age distributions. Will sample at 00:00 for hourly data
-datesel = c('2013-03-01', '2013-09-01')
+# Dates to sample age distributions
+datesel = c('2015-08-15', '2016-02-15')
 
 # Combine parameters into a list
 pars = list(Q=Qpars, ET=ETpars, S0=S0, C_S0=C_S0, f_thresh=f_thresh,
@@ -68,8 +76,7 @@ pars = list(Q=Qpars, ET=ETpars, S0=S0, C_S0=C_S0, f_thresh=f_thresh,
 #------------------------------------------------------------------------------#
 # Run model
 #------------------------------------------------------------------------------#
-runMod = SAS_EFs(pars, data) # This will take a while
-
+runMod = SAS_EFs(pars, data)
 #------------------------------------------------------------------------------#
 # Results
 #------------------------------------------------------------------------------#

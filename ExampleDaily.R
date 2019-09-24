@@ -3,7 +3,6 @@
 #------------------------------------------------------------------------------#
 # R rewrite of tran-SAS package
 # Alexander Buzacott
-# Only the Beta dist has been implemented so far
 
 # Original MatLab version and citation:
 # Benettin, P., & Bertuzzo, E. (2018). tran-SAS v1.0: a numerical model 
@@ -24,8 +23,8 @@
 library(tidyverse) # To simplify aggregations and plotting
 
 # Functions
-source('Functions/fSAS_beta.R')
 source('Models/SAS_EFs.R')
+source('Functions/SASfunctions.R')
 source('Functions/Eval_SAS.R')
 
 #------------------------------------------------------------------------------#
@@ -43,11 +42,12 @@ data = data %>%
   mutate(Date = as.Date(Date, tz='UTC')) %>% 
   group_by(Date) %>% 
   summarise(Cin = weighted.mean(Cin, P), # Conserve mass input of Cin
-            P = sum(P),
-            Q = sum(Q),
+            P  = sum(P),
+            Q  = sum(Q),
             ET = sum(ET),
+            wi = mean(wi),
             Cout = mean(Cout, na.rm=TRUE)) %>% 
-  select(Date, P, Q, ET, Cin, Cout)
+  select(Date, P, Q, ET, Cin, wi, Cout)
 
 # Fix tracer input for prettier plotting later on
 getCin = data$Cin[!is.na(data$Cin)][1] # First non NA value
@@ -62,9 +62,18 @@ for(i in 1:nrow(data)) {
 #------------------------------------------------------------------------------#
 # Parameters
 #------------------------------------------------------------------------------#
-# Set up Beta distribution parameters
-Qpars  = list(alpha = 1.0, beta = 0.3) # Beta dist parameters for discharge
-ETpars = list(alpha = 0.3, beta = 1.0) # Beta dist parameters for ET
+# Select functions for Q and ET and assign parameters
+# Power law
+# Qpars  = list(fun = 'fSAS_pl', pars = list(k=0.7))
+# ETpars = list(fun = 'fSAS_pl', pars = list(k=0.7))
+
+# Power law with system wetness
+# Qpars  = list(fun = 'fSAS_pltv', pars = list(kmin=0.3, kmax=0.9))
+# ETpars = list(fun = 'fSAS_pl',   pars = list(k=1))
+
+# Beta distribution
+Qpars  = list(fun = 'fSAS_beta', pars = list(alpha=1.0, beta=0.3))
+ETpars = list(fun = 'fSAS_beta', pars = list(alpha=0.3, beta=1.0))
 
 # Initial conditions
 S0   = 1000 # Initial storage amount
@@ -123,7 +132,7 @@ pdf_df = as_tibble(runMod$age_matr) %>%
   group_by(Date) %>% 
   mutate(Value = ifelse(Time <= tail(which(Value!=0), 1)-1, Value, NA)) %>% 
   filter(!is.na(Value))
-  
+
 p1 = ggplot(pdf_df, aes(Time, Value, fill=Date)) +
   geom_col(width=2) +
   labs(x='Time (d)', y='Frequency (1/d)') +
